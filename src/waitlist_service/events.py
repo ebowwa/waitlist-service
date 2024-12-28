@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from utils.db_state import database
+from .db import database
 
 def register_db_events(app: FastAPI):
     @app.on_event("startup")

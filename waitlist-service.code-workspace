@@ -1,0 +1,23 @@
+{
+    "folders": [
+        {
+            "path": ".",
+            "name": "waitlist-service"
+        },
+        {
+            "path": "../scripts",
+            "name": "scripts"
+        },
+        {
+            "path": "../goals",
+            "name": "goals"
+        }
+    ],
+    "settings": {
+        "files.exclude": {
+            "**/__pycache__": true,
+            "**/.pytest_cache": true,
+            "**/venv": true
+        }
+    }
+}

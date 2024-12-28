@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 import databases
 import sqlalchemy
+from .models import WaitlistEntry
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -41,13 +42,19 @@ else:
 # Initialize database connection
 database = databases.Database(DATABASE_URL)
 
-# Import and use schema
-from .db_schema import metadata
-
 # Create tables in development (SQLite only)
 if ENV == "development":
     # Use a sync SQLite URL for table creation
     sync_url = DATABASE_URL.replace("+aiosqlite", "")
     engine = sqlalchemy.create_engine(sync_url)
-    metadata.create_all(engine)
+    WaitlistEntry.metadata.create_all(engine)
     logger.info("Created development database tables")
+
+def get_db_state():
+    return {"database": database, "metadata": WaitlistEntry.metadata}
+
+def set_db_state(database_url: str = None):
+    global database
+    if database_url:
+        database = databases.Database(database_url)
+    return database

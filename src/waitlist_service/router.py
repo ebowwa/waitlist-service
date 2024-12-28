@@ -3,17 +3,17 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel, ConfigDict, EmailStr, root_validator
 from datetime import datetime
 import logging
 
 from sqlalchemy.exc import IntegrityError
 
 # Import the database components from the db module
-from database.waitlist import database, waitlist_table
+from .database import Base
+from .db import database, metadata as waitlist_table
 
-# Import the TelegramNotifier class from the notification module
-from utils._extensions.telegram_notification import TelegramNotifier  # Adjust the import path as necessary
+# Import Pydantic models from schemas
+from .schemas.waitlist import WaitlistEntry, WaitlistCreate, WaitlistUpdate
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -21,37 +21,8 @@ logger = logging.getLogger(__name__)
 # Initialize the router
 router = APIRouter(prefix="/waitlist", tags=["Waitlist CRUD"])
 
-# Pydantic Models
-class WaitlistEntry(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True
-    )
-    
-    id: Optional[int] = None
-    name: str
-    email: EmailStr
-    ip_address: Optional[str]
-    comment: Optional[str]
-    referral_source: Optional[str]  # New field
-    created_at: Optional[datetime] = None
-
-
-class WaitlistCreate(BaseModel):
-    name: str
-    email: EmailStr
-    comment: Optional[str] = None
-    referral_source: Optional[str] = None  # New field
-
-
-class WaitlistUpdate(BaseModel):
-    name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    comment: Optional[str] = None
-    referral_source: Optional[str] = None  # New field
-
-
 # Initialize a global variable for the TelegramNotifier
-notifier: Optional[TelegramNotifier] = None
+notifier = None  # We'll initialize this later when we have the utils module
 
 # CRUD Endpoints
 
@@ -104,20 +75,6 @@ async def create_entry(entry: WaitlistCreate, request: Request):
     query = waitlist_table.select().where(waitlist_table.c.id == last_record_id)
     new_entry = await database.fetch_one(query)
     logger.info(f"New entry retrieved: {new_entry}")
-
-    # Send a Telegram notification for the new entry
-    if notifier:
-        try:
-            await notifier.send_new_waitlist_entry(
-                name=new_entry['name'],
-                email=new_entry['email'],
-                comment=new_entry['comment'],
-                referral_source=new_entry['referral_source'],  # Include referral_source
-            )
-            logger.info(f"Telegram notification sent for entry ID: {last_record_id}")
-        except Exception as e:
-            logger.error(f"Failed to send Telegram notification: {e}")
-            # Optionally, you can choose to raise an exception or continue
 
     return new_entry
 
@@ -205,20 +162,6 @@ async def update_entry(entry_id: int, entry: WaitlistUpdate):
         raise HTTPException(status_code=404, detail="Entry not found")
     logger.info(f"Updated entry retrieved: {updated_entry}")
 
-    # Optionally, send a Telegram notification about the update
-    if notifier:
-        try:
-            await notifier.send_updated_waitlist_entry(
-                name=updated_entry['name'],
-                email=updated_entry['email'],
-                comment=updated_entry['comment'],
-                referral_source=updated_entry['referral_source'],
-            )
-            logger.info(f"Telegram notification sent for updated entry ID: {entry_id}")
-        except Exception as e:
-            logger.error(f"Failed to send Telegram notification for update: {e}")
-            # Decide whether to raise an exception or continue
-
     return updated_entry
 
 
@@ -266,16 +209,6 @@ async def startup():
         logger.error(f"Error connecting to the database: {e}")
         raise
 
-    # Initialize the TelegramNotifier during startup
-    global notifier  # Declare notifier as global to modify the global variable
-    try:
-        notifier = TelegramNotifier()
-        logger.info("TelegramNotifier initialized successfully.")
-    except Exception as e:
-        logger.error(f"Failed to initialize TelegramNotifier: {e}")
-        # Depending on your requirements, you might want to raise an exception here
-        # to prevent the application from starting without Telegram notifications.
-
 
 @router.on_event("shutdown")
 async def shutdown():
@@ -285,11 +218,3 @@ async def shutdown():
         logger.info("Database disconnected successfully.")
     except Exception as e:
         logger.error(f"Error disconnecting from the database: {e}")
-
-    # Close the TelegramNotifier during shutdown
-    if notifier:
-        try:
-            await notifier.close()
-            logger.info("TelegramNotifier closed successfully.")
-        except Exception as e:
-            logger.error(f"Failed to close TelegramNotifier: {e}")

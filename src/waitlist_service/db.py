@@ -9,11 +9,14 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Initialize database connection
+database = None
+metadata = None
+
 async def init_db():
     """Initialize the database tables."""
     try:
-        # Import database configuration
-        from utils.db_state import database, metadata
+        global database, metadata
         
         # Get environment
         env = os.getenv("ENVIRONMENT", "development")
@@ -45,6 +48,10 @@ async def init_db():
                 database_url,
                 connect_args={"ssl": "require"}
             )
+        
+        # Import models here to avoid circular imports
+        from .models import WaitlistEntry
+        metadata = WaitlistEntry.metadata
         
         async with engine.begin() as conn:
             # Create all tables

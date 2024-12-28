@@ -1,0 +1,15 @@
+Metadata-Version: 2.1
+Name: waitlist-service
+Version: 0.1.0
+Requires-Python: >=3.9
+Requires-Dist: fastapi
+Requires-Dist: sqlalchemy
+Requires-Dist: pydantic
+Requires-Dist: python-dotenv
+Requires-Dist: databases
+Requires-Dist: supabase
+Requires-Dist: aiosqlite
+Requires-Dist: asyncpg
+Provides-Extra: test
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: pytest-asyncio; extra == "test"
