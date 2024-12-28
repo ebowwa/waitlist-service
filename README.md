@@ -1,14 +1,13 @@
 # Waitlist Service
 
 ## Overview
-This service manages the waitlist functionality for CaringMind, extracted from the monorepo as part of the modularization effort. It handles user registration, waitlist status management, and notifications.
+This service manages the waitlist functionality, extracted as a standalone module. It handles user registration and waitlist status management.
 
 ## Features
 - User registration for waitlist
 - Waitlist position tracking
-- Status updates and notifications
 - Admin management interface
-- Integration with Supabase for data storage
+- Flexible database support (SQLite for local development, Supabase for production)
 
 ## Installation
 
@@ -23,17 +22,15 @@ This service manages the waitlist functionality for CaringMind, extracted from t
 git clone https://github.com/ebowwa/waitlist-service.git
 cd waitlist-service
 
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+# Make setup script executable and run it
+chmod +x setup.sh
+./setup.sh
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your credentials
+# Activate the virtual environment
+source venv/bin/activate
 ```
+
+For local development, SQLite will be used by default. You can configure other database backends by editing the `.env` file.
 
 ## Usage Examples
 
@@ -105,9 +102,9 @@ alembic upgrade head
 
 ## Environment Variables
 Required environment variables:
-- `SUPABASE_URL`: Your Supabase project URL
-- `SUPABASE_KEY`: Your Supabase API key
-- `DATABASE_URL`: SQLAlchemy database URL
+- `DATABASE_URL`: SQLAlchemy database URL (defaults to SQLite for local development)
+- `SUPABASE_URL`: Your Supabase project URL (optional, for production)
+- `SUPABASE_KEY`: Your Supabase API key (optional, for production)
 
 ## Contributing
 1. Fork the repository

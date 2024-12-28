@@ -10,3 +10,4 @@ venv/
 htmlcov/
 .DS_Store
 instance
+/src/data
