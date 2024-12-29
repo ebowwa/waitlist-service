@@ -1,18 +1,13 @@
 # backend/route/website_services/waitlist_router.py
 
 from typing import List, Optional
-
 from fastapi import APIRouter, HTTPException, Request, status
 from datetime import datetime
 import logging
-
 from sqlalchemy.exc import IntegrityError
-
-# Import the database components from the db module
 from .database import Base
-from .db import database, metadata as waitlist_table
-
-# Import Pydantic models from schemas
+from .state import database
+from .models import WaitlistEntry
 from .schemas.waitlist import WaitlistEntry, WaitlistCreate, WaitlistUpdate
 
 # Configure logging
@@ -48,7 +43,7 @@ async def create_entry(entry: WaitlistCreate, request: Request):
     logger.info(f"Client IP address: {ip_address}")
 
     # Insert the new entry, including the comment and referral_source
-    query = waitlist_table.insert().values(
+    query = Base.metadata.tables['waitlist'].insert().values(
         name=entry.name,
         email=entry.email,
         ip_address=ip_address,
@@ -72,7 +67,7 @@ async def create_entry(entry: WaitlistCreate, request: Request):
         )
 
     # Retrieve the created entry
-    query = waitlist_table.select().where(waitlist_table.c.id == last_record_id)
+    query = Base.metadata.tables['waitlist'].select().where(Base.metadata.tables['waitlist'].c.id == last_record_id)
     new_entry = await database.fetch_one(query)
     logger.info(f"New entry retrieved: {new_entry}")
 
@@ -89,7 +84,7 @@ async def get_entry(entry_id: int):
     Retrieve a specific waitlist entry by its ID.
     """
     logger.info(f"Retrieving entry with ID: {entry_id}")
-    query = waitlist_table.select().where(waitlist_table.c.id == entry_id)
+    query = Base.metadata.tables['waitlist'].select().where(Base.metadata.tables['waitlist'].c.id == entry_id)
     entry = await database.fetch_one(query)
     if entry is None:
         logger.warning(f"Entry with ID {entry_id} not found.")
@@ -107,7 +102,7 @@ async def list_entries():
     Retrieve all waitlist entries, ordered by creation date descending.
     """
     logger.info("Listing all waitlist entries.")
-    query = waitlist_table.select().order_by(waitlist_table.c.created_at.desc())
+    query = Base.metadata.tables['waitlist'].select().order_by(Base.metadata.tables['waitlist'].c.created_at.desc())
     entries = await database.fetch_all(query)
     logger.info(f"Number of entries retrieved: {len(entries)}")
     return entries
@@ -134,8 +129,8 @@ async def update_entry(entry_id: int, entry: WaitlistUpdate):
 
     # Execute the update
     query = (
-        waitlist_table.update()
-        .where(waitlist_table.c.id == entry_id)
+        Base.metadata.tables['waitlist'].update()
+        .where(Base.metadata.tables['waitlist'].c.id == entry_id)
         .values(**update_data)
     )
     try:
@@ -155,7 +150,7 @@ async def update_entry(entry_id: int, entry: WaitlistUpdate):
         )
 
     # Fetch the updated entry
-    query = waitlist_table.select().where(waitlist_table.c.id == entry_id)
+    query = Base.metadata.tables['waitlist'].select().where(Base.metadata.tables['waitlist'].c.id == entry_id)
     updated_entry = await database.fetch_one(query)
     if updated_entry is None:
         logger.warning(f"Entry with ID {entry_id} not found after update.")
@@ -177,14 +172,14 @@ async def delete_entry(entry_id: int):
     logger.info(f"Deleting entry with ID: {entry_id}")
 
     # Check if the entry exists
-    query = waitlist_table.select().where(waitlist_table.c.id == entry_id)
+    query = Base.metadata.tables['waitlist'].select().where(Base.metadata.tables['waitlist'].c.id == entry_id)
     entry = await database.fetch_one(query)
     if entry is None:
         logger.warning(f"Entry with ID {entry_id} not found for deletion.")
         raise HTTPException(status_code=404, detail="Entry not found")
 
     # Perform the deletion
-    delete_query = waitlist_table.delete().where(waitlist_table.c.id == entry_id)
+    delete_query = Base.metadata.tables['waitlist'].delete().where(Base.metadata.tables['waitlist'].c.id == entry_id)
     try:
         await database.execute(delete_query)
         logger.info(f"Entry ID {entry_id} deleted successfully.")
@@ -201,20 +196,25 @@ async def delete_entry(entry_id: int):
 
 @router.on_event("startup")
 async def startup():
+    """Connect to the database on startup."""
     logger.info("Starting up and connecting to the database.")
-    try:
-        await database.connect()
-        logger.info("Database connected successfully.")
-    except Exception as e:
-        logger.error(f"Error connecting to the database: {e}")
-        raise
-
+    if not database:
+        raise RuntimeError("Database not initialized")
+    if not database.is_connected:
+        try:
+            await database.connect()
+            logger.info("Database connected successfully.")
+        except Exception as e:
+            logger.error(f"Error connecting to the database: {e}")
+            raise
 
 @router.on_event("shutdown")
 async def shutdown():
+    """Disconnect from the database on shutdown."""
     logger.info("Shutting down and disconnecting from the database.")
-    try:
-        await database.disconnect()
-        logger.info("Database disconnected successfully.")
-    except Exception as e:
-        logger.error(f"Error disconnecting from the database: {e}")
+    if database and database.is_connected:
+        try:
+            await database.disconnect()
+            logger.info("Database disconnected successfully.")
+        except Exception as e:
+            logger.error(f"Error disconnecting from the database: {e}")

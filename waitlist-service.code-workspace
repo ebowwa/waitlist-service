@@ -11,6 +11,12 @@
         {
             "path": "../goals",
             "name": "goals"
+        },
+        {
+            "path": "../caringmind-server"
+        },
+        {
+            "path": "../caringmind-resources"
         }
     ],
     "settings": {

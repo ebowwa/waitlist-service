@@ -21,13 +21,6 @@ This service manages the waitlist functionality, extracted as a standalone modul
 # Clone the repository
 git clone https://github.com/ebowwa/waitlist-service.git
 cd waitlist-service
-
-# Make setup script executable and run it
-chmod +x setup.sh
-./setup.sh
-
-# Activate the virtual environment
-source venv/bin/activate
 ```
 
 For local development, SQLite will be used by default. You can configure other database backends by editing the `.env` file.
