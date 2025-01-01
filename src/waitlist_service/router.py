@@ -4,6 +4,9 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request, status
 from datetime import datetime
 import logging
+import os
+import ssl
+from databases import Database
 from sqlalchemy.exc import IntegrityError
 from .database import Base
 from .state import database
@@ -12,6 +15,24 @@ from .schemas.waitlist import WaitlistEntry, WaitlistCreate, WaitlistUpdate
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Get database URL from environment
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable not set")
+
+# Configure SSL context for database connection
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE  # Only for development! Remove in production
+
+# Initialize database with SSL context
+database = Database(
+    DATABASE_URL,
+    ssl=ssl_context,
+    min_size=5,
+    max_size=20
+)
 
 # Initialize the router
 router = APIRouter(prefix="/waitlist", tags=["Waitlist CRUD"])
@@ -196,25 +217,22 @@ async def delete_entry(entry_id: int):
 
 @router.on_event("startup")
 async def startup():
-    """Connect to the database on startup."""
+    """Connect to database on startup"""
     logger.info("Starting up and connecting to the database.")
-    if not database:
-        raise RuntimeError("Database not initialized")
-    if not database.is_connected:
-        try:
-            await database.connect()
-            logger.info("Database connected successfully.")
-        except Exception as e:
-            logger.error(f"Error connecting to the database: {e}")
-            raise
+    try:
+        await database.connect()
+        logger.info("Successfully connected to the database.")
+    except Exception as e:
+        logger.error(f"Error connecting to the database: {str(e)}")
+        raise
 
 @router.on_event("shutdown")
 async def shutdown():
-    """Disconnect from the database on shutdown."""
+    """Disconnect from database on shutdown"""
     logger.info("Shutting down and disconnecting from the database.")
-    if database and database.is_connected:
-        try:
-            await database.disconnect()
-            logger.info("Database disconnected successfully.")
-        except Exception as e:
-            logger.error(f"Error disconnecting from the database: {e}")
+    try:
+        await database.disconnect()
+        logger.info("Successfully disconnected from the database.")
+    except Exception as e:
+        logger.error(f"Error disconnecting from the database: {str(e)}")
+        raise
