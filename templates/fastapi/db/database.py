@@ -5,6 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from .config import get_db_settings
 from .models import Base
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -17,17 +18,28 @@ class Database:
     async def init_db(self):
         """Initialize database connection"""
         try:
+            db_url = None
+            
             if self.settings.DB_TYPE == "sqlite":
-                # SQLite connection
-                self.engine = create_engine(
-                    self.settings.SQLITE_URL,
-                    connect_args={"check_same_thread": False}
-                )
+                # Ensure the data directory exists
+                db_dir = os.path.dirname(self.settings.SQLITE_URL.replace('sqlite:///', ''))
+                if db_dir and not os.path.exists(db_dir):
+                    os.makedirs(db_dir)
+                db_url = self.settings.SQLITE_URL
+                connect_args = {"check_same_thread": False}
             elif self.settings.DB_TYPE == "postgres" and self.settings.POSTGRES_URL:
-                # PostgreSQL connection
-                self.engine = create_engine(self.settings.POSTGRES_URL)
+                db_url = self.settings.POSTGRES_URL
+                connect_args = {}
             else:
-                raise ValueError(f"Unsupported database type: {self.settings.DB_TYPE}")
+                logger.warning(f"Unsupported or unconfigured database type: {self.settings.DB_TYPE}, falling back to SQLite")
+                db_url = "sqlite:///./waitlist.db"
+                connect_args = {"check_same_thread": False}
+            
+            # Create engine
+            self.engine = create_engine(
+                db_url,
+                connect_args=connect_args
+            )
             
             # Create tables
             Base.metadata.create_all(bind=self.engine)
@@ -39,7 +51,7 @@ class Database:
                 bind=self.engine
             )
             
-            logger.info(f"Database initialized with {self.settings.DB_TYPE}")
+            logger.info(f"Database initialized with {self.settings.DB_TYPE} at {db_url}")
             
         except Exception as e:
             logger.error(f"Error initializing database: {str(e)}")

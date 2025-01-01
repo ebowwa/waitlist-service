@@ -16,6 +16,7 @@ class DatabaseSettings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        extra = "allow"  # Allow extra fields in the environment
 
 @lru_cache()
 def get_db_settings() -> DatabaseSettings:
