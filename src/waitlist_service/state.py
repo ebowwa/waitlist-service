@@ -35,36 +35,15 @@ if ENV == "production":
     
     # Create SSL context for Supabase
     ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
     
-    # Get SSL mode from environment variable, default to 'require'
-    ssl_mode = os.getenv("SUPABASE_SSL_MODE", "require")
-    
-    if ssl_mode == "disable":
-        logger.warning("SSL verification disabled by configuration")
-        ssl_context.verify_mode = ssl.CERT_NONE
-    elif ssl_mode == "require":
-        logger.info("Using SSL in require mode (no certificate verification)")
-        ssl_context.verify_mode = ssl.CERT_NONE
-    else:  # verify-full
-        # Try to load the Supabase certificate if it exists
-        cert_paths = [
-            Path("./certificates/supabase.crt").resolve(),
-            Path(os.getenv("SUPABASE_CA_CERT_PATH", "")).resolve(),
-            Path.home() / ".postgresql" / "root.crt"
-        ]
-        
-        cert_loaded = False
-        for cert_path in cert_paths:
-            if cert_path.exists():
-                logger.info(f"Loading Supabase certificate from {cert_path}")
-                ssl_context.load_verify_locations(cafile=str(cert_path))
-                cert_loaded = True
-                break
-        
-        if not cert_loaded:
-            logger.warning("No valid certificate found, falling back to require mode")
-            ssl_context.verify_mode = ssl.CERT_NONE
+    # Try to load the Supabase certificate if it exists
+    cert_path = Path("./certificates/supabase.crt").resolve()
+    if cert_path.exists():
+        logger.info(f"Loading Supabase certificate from {cert_path}")
+        ssl_context.load_verify_locations(cafile=str(cert_path))
+    else:
+        logger.warning("Supabase certificate not found, using system certificates")
+        ssl_context.load_default_certs()
     
     # Initialize database with SSL context
     database = databases.Database(
@@ -114,3 +93,4 @@ def set_db_state(database_url: str = None):
     global database
     if database_url:
         database = databases.Database(database_url)
+    return database
