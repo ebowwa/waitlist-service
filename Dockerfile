@@ -7,8 +7,7 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=3030 \
-    PYTHONPATH=/app/src
+    PORT=3030
 
 # Install system dependencies
 RUN apt-get update && \
@@ -16,25 +15,19 @@ RUN apt-get update && \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uvicorn globally first
-RUN pip install --no-cache-dir uvicorn[standard] && \
-    which uvicorn && \
-    uvicorn --version
-
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
 # Copy the entire project
 COPY . .
 
-# Install the package in development mode
-RUN pip install -e .
+# Make the script executable
+RUN chmod +x /app/templates/fastapi/run_server.sh
 
-# Expose port
-EXPOSE $PORT
+# Create a wrapper script to handle environment and execution
+RUN echo '#!/bin/bash\n\
+export PYTHONPATH=/app/src:$PYTHONPATH\n\
+cd /app/templates/fastapi\n\
+exec ./run_server.sh --port 3030 --no-reload --workers 1\n\
+' > /app/docker-entrypoint.sh && \
+    chmod +x /app/docker-entrypoint.sh
 
-# Run the application with direct uvicorn path
-CMD ["uvicorn", "waitlist_service.main:app", "--host", "0.0.0.0", "--port", "3030"]
+# Run the wrapper script
+CMD ["/app/docker-entrypoint.sh"]
