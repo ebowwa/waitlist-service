@@ -16,6 +16,11 @@ RUN apt-get update && \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# Install uvicorn globally first
+RUN pip install --no-cache-dir uvicorn[standard] && \
+    which uvicorn && \
+    uvicorn --version
+
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
@@ -31,5 +36,5 @@ RUN pip install -e .
 # Expose port
 EXPOSE $PORT
 
-# Run the application with explicit python path
-CMD ["/usr/local/bin/python", "-m", "uvicorn", "waitlist_service.main:app", "--host", "0.0.0.0", "--port", "3030"]
+# Run the application with direct uvicorn path
+CMD ["uvicorn", "waitlist_service.main:app", "--host", "0.0.0.0", "--port", "3030"]
