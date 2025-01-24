@@ -35,7 +35,7 @@ python -m pip install -e "$REPO_ROOT"
 export PYTHONPATH="${REPO_ROOT}/src:${PYTHONPATH}"
 
 # Default values
-PORT=8000
+PORT=3030
 RELOAD=true
 WORKERS=1
 

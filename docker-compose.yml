@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  waitlist:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3030:3030"
+    environment:
+      - PORT=3030
+    volumes:
+      - ./src:/app/src
+      - ./sql_queries:/app/sql_queries
+    restart: unless-stopped
