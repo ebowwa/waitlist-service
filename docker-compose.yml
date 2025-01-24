@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       POSTGRES_DB: ${POSTGRES_DB:-waitlist}
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - waitlist_postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
@@ -44,6 +44,5 @@ services:
     restart: always
 
 volumes:
-  db_data:
-  postgres_data:
-    name: waitlist_postgres_data
+  waitlist_postgres_data:
+    external: true
