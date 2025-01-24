@@ -15,17 +15,14 @@ RUN apt-get update && \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt .
-COPY setup.py .
+# Copy the entire project
+COPY . .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install -e .
 
-# Copy the rest of the application
-COPY src/ ./src/
-COPY sql_queries/ ./sql_queries/
+# Install the package in development mode
+RUN pip install -e .
 
 # Set Python path
 ENV PYTHONPATH=/app/src:$PYTHONPATH
