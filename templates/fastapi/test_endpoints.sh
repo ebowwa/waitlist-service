@@ -20,12 +20,12 @@ make_request() {
     echo "Response:"
     
     if [ "$method" = "POST" ]; then
-        response=$(curl -s -X POST "http://localhost:8000${endpoint}" \
+        response=$(curl -s -X POST "http://localhost:3030${endpoint}" \
             -H "Content-Type: application/json" \
             -d "${data}" \
             -w "\nStatus: %{http_code}")
     else
-        response=$(curl -s "http://localhost:8000${endpoint}" \
+        response=$(curl -s "http://localhost:3030${endpoint}" \
             -w "\nStatus: %{http_code}")
     fi
     
@@ -43,9 +43,9 @@ make_request() {
 
 # Check if server is running
 echo "Checking if server is running..."
-if ! curl -s http://localhost:8000/health > /dev/null; then
+if ! curl -s http://localhost:3030/health > /dev/null; then
     echo -e "${RED}Error: Could not connect to server"
-    echo "Please make sure the server is running on http://localhost:8000${NC}"
+    echo "Please make sure the server is running on http://localhost:3030${NC}"
     exit 1
 fi
 echo -e "${GREEN}Server is running!${NC}"
@@ -66,7 +66,7 @@ make_request "POST" "/waitlist" \
 # Test duplicate email (should fail with 409)
 echo -e "\nTesting: Add Duplicate Email (should fail)"
 echo "Endpoint: POST /waitlist"
-response=$(curl -s -X POST "http://localhost:8000/waitlist" \
+response=$(curl -s -X POST "http://localhost:3030/waitlist" \
     -H "Content-Type: application/json" \
     -d '{"email":"test1@example.com"}' \
     -w "\nStatus: %{http_code}")
