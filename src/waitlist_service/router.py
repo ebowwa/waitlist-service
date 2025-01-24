@@ -12,6 +12,7 @@ from .database import Base
 from .state import database
 from .models import WaitlistEntry
 from .schemas.waitlist import WaitlistEntry, WaitlistCreate, WaitlistUpdate
+from .notifications import notifier
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -36,9 +37,6 @@ database = Database(
 
 # Initialize the router
 router = APIRouter(prefix="/waitlist", tags=["Waitlist CRUD"])
-
-# Initialize a global variable for the TelegramNotifier
-notifier = None  # We'll initialize this later when we have the utils module
 
 # CRUD Endpoints
 
@@ -91,6 +89,17 @@ async def create_entry(entry: WaitlistCreate, request: Request):
     query = Base.metadata.tables['waitlist'].select().where(Base.metadata.tables['waitlist'].c.id == last_record_id)
     new_entry = await database.fetch_one(query)
     logger.info(f"New entry retrieved: {new_entry}")
+
+    # Send Telegram notification
+    try:
+        await notifier.notify_new_signup(
+            email=entry.email,
+            name=entry.name,
+            referral_source=entry.referral_source
+        )
+    except Exception as e:
+        logger.error(f"Failed to send Telegram notification: {e}")
+        # Don't raise an exception - we don't want to fail the signup if notification fails
 
     return new_entry
 
