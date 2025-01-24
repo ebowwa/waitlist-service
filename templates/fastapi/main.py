@@ -6,9 +6,9 @@ from datetime import datetime
 import uvicorn
 import asyncio
 import logging
-from sqlalchemy.orm import Session
-from db.database import db
-from db.repository import WaitlistRepository
+import os
+from waitlist_service.db import init_db, get_database
+from waitlist_service.models import WaitlistEntry
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -34,22 +34,25 @@ app.add_middleware(
 async def startup_event():
     try:
         logger.info("Initializing database...")
-        await db.init_db()
+        await init_db()
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Error initializing database: {str(e)}")
         raise
 
-# Dependency to get database session
-def get_db():
-    return next(db.get_db())
+# Get database dependency
+async def get_db():
+    database = await get_database()
+    if not database:
+        raise HTTPException(status_code=500, detail="Database not initialized")
+    return database
 
 # Models
 class WaitlistEntryCreate(BaseModel):
     email: EmailStr = Field(..., description="Email address of the user")
     name: Optional[str] = Field(None, description="Name of the user")
     comment: Optional[str] = Field(None, description="Additional comments")
-    referral_source: Optional[str] = Field(None, description="How the user found out about the service")
+    referral_source: Optional[str] = Field(None, description="Source of referral")
 
 class WaitlistEntryResponse(WaitlistEntryCreate):
     created_at: datetime = Field(default_factory=datetime.now)
@@ -60,7 +63,7 @@ async def root():
     return {"message": "Welcome to Waitlist Service API"}
 
 @app.post("/waitlist", response_model=WaitlistEntryResponse)
-async def add_to_waitlist(entry: WaitlistEntryCreate, db: Session = Depends(get_db)):
+async def add_to_waitlist(entry: WaitlistEntryCreate, db: WaitlistEntry = Depends(get_db)):
     """
     Add a new entry to the waitlist
     
@@ -74,8 +77,7 @@ async def add_to_waitlist(entry: WaitlistEntryCreate, db: Session = Depends(get_
     - The created waitlist entry with timestamp
     """
     try:
-        repo = WaitlistRepository(db)
-        db_entry = repo.create_entry(
+        db_entry = db.create_entry(
             email=entry.email,
             name=entry.name,
             comment=entry.comment,
@@ -98,13 +100,12 @@ async def add_to_waitlist(entry: WaitlistEntryCreate, db: Session = Depends(get_
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/waitlist", response_model=List[WaitlistEntryResponse])
-async def get_all_entries(db: Session = Depends(get_db)):
+async def get_all_entries(db: WaitlistEntry = Depends(get_db)):
     """
     Get all waitlist entries
     """
     try:
-        repo = WaitlistRepository(db)
-        entries = repo.get_all_entries()
+        entries = db.get_all_entries()
         return [
             WaitlistEntryResponse(
                 email=entry.email,

@@ -29,11 +29,11 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-waitlist}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
-      PORT: 8000
+      PORT: 3030
       PYTHONPATH: /app/src
       ENVIRONMENT: production
     ports:
-      - "8000:8000"
+      - "3030:3030"
     volumes:
       - ./src:/app/src
       - ./sql_queries:/app/sql_queries
