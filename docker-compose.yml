@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=waitlist
+      - POSTGRES_PASSWORD=waitlist_secure_password
+      - POSTGRES_DB=waitlist
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waitlist"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   waitlist:
     build:
       context: .
@@ -14,4 +31,13 @@ services:
     environment:
       - PORT=3030
       - PYTHONPATH=/app/src
+      - DATABASE_URL=postgresql://waitlist:waitlist_secure_password@db:5432/waitlist
+      - ENVIRONMENT=production
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: waitlist_db_data

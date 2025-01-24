@@ -5,6 +5,10 @@ from pathlib import Path
 import sqlalchemy
 from sqlalchemy.ext.asyncio import create_async_engine
 from dotenv import load_dotenv
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -18,11 +22,15 @@ async def init_db():
     try:
         global database, metadata
         
-        # Get environment
+        # Get environment and database URL
         env = os.getenv("ENVIRONMENT", "development")
+        database_url = os.getenv("DATABASE_URL")
         
-        if env == "development":
-            # Development: Use SQLite
+        logger.info(f"Initializing database in {env} environment")
+        
+        if env == "development" and not database_url:
+            # Development: Use SQLite if no DATABASE_URL is provided
+            logger.info("Using SQLite database for development")
             BASE_DIR = Path(__file__).resolve().parent.parent / "data"
             DATABASE_NAME = "development.db"
             DATABASE_PATH = BASE_DIR / DATABASE_NAME
@@ -34,34 +42,37 @@ async def init_db():
             engine = create_async_engine(f"sqlite+aiosqlite:///{DATABASE_PATH}")
             
         else:
-            # Production: Use Supabase PostgreSQL
-            database_url = os.getenv("SUPABASE_DATABASE_URL")
-            
+            # Production or custom DATABASE_URL: Use PostgreSQL
             if not database_url:
-                raise ValueError("Missing SUPABASE_DATABASE_URL in environment")
-            
-            # Remove sslmode from URL and add it to connect_args
-            database_url = database_url.replace("?sslmode=require", "")
+                raise ValueError("DATABASE_URL environment variable is required")
                 
-            # Create PostgreSQL engine with SSL configuration
+            logger.info("Using PostgreSQL database")
+            
+            # Convert synchronous PostgreSQL URL to async
+            if database_url.startswith('postgresql://'):
+                database_url = database_url.replace('postgresql://', 'postgresql+asyncpg://')
+            
+            # Create PostgreSQL engine
             engine = create_async_engine(
                 database_url,
-                connect_args={"ssl": "require"}
+                echo=True,  # Log all SQL statements
+                pool_size=5,
+                max_overflow=10
             )
         
-        # Import models here to avoid circular imports
-        from .models import WaitlistEntry
-        metadata = WaitlistEntry.metadata
+        # Initialize tables
+        metadata = sqlalchemy.MetaData()
         
+        # Create tables if they don't exist
         async with engine.begin() as conn:
-            # Create all tables
             await conn.run_sync(metadata.create_all)
-            print(f"Database tables created successfully in {env} environment")
+            
+        logger.info("Database initialization complete")
         
-        await engine.dispose()
+        return engine
         
     except Exception as e:
-        print(f"Error initializing database: {e}")
+        logger.error(f"Failed to initialize database: {e}")
         raise
 
 if __name__ == "__main__":
