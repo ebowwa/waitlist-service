@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       POSTGRES_DB: ${POSTGRES_DB:-waitlist}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
@@ -26,14 +26,14 @@ services:
       dockerfile: Dockerfile
     container_name: waitlist_app
     environment:
-      PORT: 3030
-      PYTHONPATH: /app/src
-      ENVIRONMENT: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-waitlist}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      PORT: 8000
+      PYTHONPATH: /app/src
+      ENVIRONMENT: production
     ports:
-      - "3030:3030"
+      - "8000:8000"
     volumes:
       - ./src:/app/src
       - ./sql_queries:/app/sql_queries
@@ -44,5 +44,6 @@ services:
     restart: always
 
 volumes:
+  db_data:
   postgres_data:
     name: waitlist_postgres_data
