@@ -1,79 +1,85 @@
 #!/usr/bin/env python3
 import os
 import asyncio
-from pathlib import Path
-import sqlalchemy
-from sqlalchemy.ext.asyncio import create_async_engine
-from dotenv import load_dotenv
 import logging
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import MetaData, Table, Column, Integer, String, DateTime, text
+from sqlalchemy.sql import func
+from databases import Database
 
 # Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Load environment variables
-load_dotenv()
 
 # Initialize database connection
 database = None
-metadata = None
+metadata = MetaData()
+
+# Define tables
+waitlist = Table(
+    "waitlist",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("email", String, unique=True, nullable=False),
+    Column("name", String),
+    Column("ip_address", String),
+    Column("comment", String),
+    Column("referral_source", String),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), onupdate=func.now())
+)
+
+async def get_database():
+    """Get the database instance."""
+    return database
 
 async def init_db():
-    """Initialize the database tables."""
+    """Initialize the database connection and create tables."""
+    global database
+    
     try:
-        global database, metadata
-        
-        # Get environment and database URL
-        env = os.getenv("ENVIRONMENT", "development")
+        # Get database URL from environment
         database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise ValueError("DATABASE_URL environment variable is required")
+            
+        logger.info(f"Initializing database connection to {database_url}")
         
-        logger.info(f"Initializing database in {env} environment")
+        # Convert synchronous PostgreSQL URL to async if needed
+        if database_url.startswith('postgresql://'):
+            database_url = database_url.replace('postgresql://', 'postgresql+asyncpg://')
         
-        if env == "development" and not database_url:
-            # Development: Use SQLite if no DATABASE_URL is provided
-            logger.info("Using SQLite database for development")
-            BASE_DIR = Path(__file__).resolve().parent.parent / "data"
-            DATABASE_NAME = "development.db"
-            DATABASE_PATH = BASE_DIR / DATABASE_NAME
-            
-            # Ensure the data directory exists
-            BASE_DIR.mkdir(parents=True, exist_ok=True)
-            
-            # Create SQLite engine
-            engine = create_async_engine(f"sqlite+aiosqlite:///{DATABASE_PATH}")
-            
-        else:
-            # Production or custom DATABASE_URL: Use PostgreSQL
-            if not database_url:
-                raise ValueError("DATABASE_URL environment variable is required")
-                
-            logger.info("Using PostgreSQL database")
-            
-            # Convert synchronous PostgreSQL URL to async
-            if database_url.startswith('postgresql://'):
-                database_url = database_url.replace('postgresql://', 'postgresql+asyncpg://')
-            
-            # Create PostgreSQL engine
-            engine = create_async_engine(
-                database_url,
-                echo=True,  # Log all SQL statements
-                pool_size=5,
-                max_overflow=10
-            )
+        # Create engine with connection pooling
+        engine = create_async_engine(
+            database_url,
+            echo=True,  # Log all SQL
+            pool_size=5,
+            max_overflow=10,
+            pool_timeout=30,
+            pool_recycle=1800,  # Recycle connections after 30 minutes
+        )
         
-        # Initialize tables
-        metadata = sqlalchemy.MetaData()
+        # Create database instance
+        database = Database(database_url)
         
-        # Create tables if they don't exist
+        # Create tables
         async with engine.begin() as conn:
             await conn.run_sync(metadata.create_all)
             
-        logger.info("Database initialization complete")
-        
-        return engine
+        logger.info("Database initialized successfully")
+        return database
         
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"Database initialization failed: {str(e)}")
         raise
+
+async def close_db():
+    """Close database connection."""
+    global database
+    if database:
+        await database.disconnect()
+        logger.info("Database connection closed")
 
 if __name__ == "__main__":
     asyncio.run(init_db())

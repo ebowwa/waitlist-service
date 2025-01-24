@@ -3,41 +3,46 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
+    container_name: waitlist_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-waitlist}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_USER=waitlist
-      - POSTGRES_PASSWORD=waitlist_secure_password
-      - POSTGRES_DB=waitlist
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U waitlist"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-waitlist}"]
       interval: 5s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
 
   waitlist:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: waitlist_app
+    environment:
+      PORT: 3030
+      PYTHONPATH: /app/src
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-waitlist}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
     ports:
       - "3030:3030"
     volumes:
       - ./src:/app/src
       - ./sql_queries:/app/sql_queries
       - ./.env:/app/.env
-    environment:
-      - PORT=3030
-      - PYTHONPATH=/app/src
-      - DATABASE_URL=postgresql://waitlist:waitlist_secure_password@db:5432/waitlist
-      - ENVIRONMENT=production
     depends_on:
       db:
         condition: service_healthy
-    restart: unless-stopped
+    restart: always
 
 volumes:
   postgres_data:
-    name: waitlist_db_data
+    name: waitlist_postgres_data
