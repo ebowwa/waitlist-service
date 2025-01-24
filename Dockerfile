@@ -16,11 +16,14 @@ RUN apt-get update && \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the entire project
-COPY . .
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the entire project
+COPY . .
 
 # Install the package in development mode
 RUN pip install -e .
@@ -28,5 +31,5 @@ RUN pip install -e .
 # Expose port
 EXPOSE $PORT
 
-# Run the application with the correct module path
-CMD ["sh", "-c", "python -m uvicorn src.waitlist_service.main:app --host 0.0.0.0 --port $PORT"]
+# Run the application with explicit python path
+CMD ["/usr/local/bin/python", "-m", "uvicorn", "waitlist_service.main:app", "--host", "0.0.0.0", "--port", "3030"]
