@@ -226,22 +226,30 @@ async def delete_entry(entry_id: int):
 
 @router.on_event("startup")
 async def startup():
-    """Connect to database on startup"""
+    """Connect to database and initialize Telegram notifier on startup"""
     logger.info("Starting up and connecting to the database.")
     try:
         await database.connect()
         logger.info("Successfully connected to the database.")
+        
+        # Initialize Telegram notifier
+        if os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"):
+            logger.info("Telegram credentials found, notifications will be enabled")
+        else:
+            logger.warning("Telegram credentials not found in environment, notifications will be disabled")
+            
     except Exception as e:
-        logger.error(f"Error connecting to the database: {str(e)}")
+        logger.error(f"Error during startup: {str(e)}")
         raise
 
 @router.on_event("shutdown")
 async def shutdown():
-    """Disconnect from database on shutdown"""
-    logger.info("Shutting down and disconnecting from the database.")
+    """Disconnect from database and cleanup Telegram notifier on shutdown"""
+    logger.info("Shutting down.")
     try:
         await database.disconnect()
-        logger.info("Successfully disconnected from the database.")
+        await notifier.close()
+        logger.info("Successfully shut down all services.")
     except Exception as e:
-        logger.error(f"Error disconnecting from the database: {str(e)}")
+        logger.error(f"Error during shutdown: {str(e)}")
         raise
