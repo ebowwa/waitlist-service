@@ -45,10 +45,13 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
 
-if not all([SUPABASE_URL, SUPABASE_KEY]):
+# Only enforce Supabase config in production
+if ENV == "production" and not all([SUPABASE_URL, SUPABASE_KEY]):
     raise ValueError("Supabase configuration incomplete. Check environment variables.")
+elif ENV == "development":
+    logger.warning("Running in development mode - Supabase integration disabled")
 
-logger.info("Initializing Supabase PostgreSQL database connection")
+logger.info("Initializing database connection")
 
 try:
     # Initialize Supabase client here if needed
@@ -57,7 +60,7 @@ except Exception as e:
     logger.error(f"Failed to initialize Supabase client: {str(e)}")
     raise
 
-logger.info("Supabase PostgreSQL database initialized")
+logger.info("Database connection initialized")
 
 def get_db_state():
     """Get the current database state."""
