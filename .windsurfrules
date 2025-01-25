@@ -1,0 +1,25 @@
+# Microservice for Waitlist Operations
+1. Be modular
+2. Grounding: Read the code for correct information, before making any changes or adding be sure to read and be sure we do not already have it 
+3. focus on reusability over everything
+
+# This FastAPI-based microservice manages waitlist operations using a PostgreSQL database.
+# It runs in a Docker container and interacts with a separate PostgreSQL container.
+
+# Client Input:
+# - email
+# - name
+# - comment
+# - referral_source
+# - IP address (automatically captured)
+
+# Features:
+# - CRUD operations for waitlist entries
+# - Reports new sign-ups to a Telegram bot
+# - Runs on port 3030 ONLY
+
+# Tech Stack:
+# - FastAPI
+# - PostgreSQL
+# - Docker
+# - Telegram Bot API

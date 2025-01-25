@@ -17,3 +17,4 @@ src/waitlist_service.egg-info/top_level.txt
 src/waitlist_service/schemas/__init__.py
 src/waitlist_service/schemas/waitlist.py
 tests/test_database.py
+tests/test_telegram.py
