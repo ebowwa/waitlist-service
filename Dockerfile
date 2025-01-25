@@ -31,3 +31,5 @@ exec ./run_server.sh --port 3030 --no-reload --workers 1\n\
 
 # Run the wrapper script
 CMD ["/app/docker-entrypoint.sh"]
+
+# docker compose down && docker compose up --build
