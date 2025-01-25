@@ -12,6 +12,11 @@ WORKERS="${WORKERS:-1}"
 RELOAD="${RELOAD:-false}"
 ENVIRONMENT="${ENVIRONMENT:-development}"
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+APP_DIR="$PROJECT_ROOT/templates/fastapi"
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -41,8 +46,11 @@ done
 
 # Set up Python path
 if [ -z "$PYTHONPATH" ]; then
-    export PYTHONPATH="/app/src:${PYTHONPATH}"
+    export PYTHONPATH="$PROJECT_ROOT/src:${PYTHONPATH}"
 fi
+
+# Navigate to the FastAPI app directory
+cd "$APP_DIR" || exit 1
 
 # Development environment setup
 if [ "$ENVIRONMENT" = "development" ] && [ ! -d "venv" ]; then
@@ -66,6 +74,7 @@ echo -e "  Workers: $WORKERS"
 echo -e "  Reload: $RELOAD"
 echo -e "  Environment: $ENVIRONMENT"
 echo -e "  Python path: $PYTHONPATH"
+echo -e "  App directory: $APP_DIR"
 
 # Start the server
 exec python -m uvicorn main:app \
