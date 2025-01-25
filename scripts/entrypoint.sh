@@ -6,6 +6,27 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Function to check for required commands
+check_command() {
+    if ! command -v "$1" &> /dev/null; then
+        echo -e "${RED}Error: $1 is not installed${NC}"
+        echo -e "${YELLOW}Please install $1 using:${NC}"
+        case $1 in
+            python3)
+                echo "sudo apt update && sudo apt install -y python3 python3-pip python3-venv"
+                ;;
+            *)
+                echo "sudo apt update && sudo apt install -y $1"
+                ;;
+        esac
+        exit 1
+    fi
+}
+
+# Check for required commands
+check_command python3
+check_command pip3
+
 # Default values
 PORT="${PORT:-3030}"
 WORKERS="${WORKERS:-1}"
@@ -50,15 +71,35 @@ if [ -z "$PYTHONPATH" ]; then
 fi
 
 # Navigate to the FastAPI app directory
-cd "$APP_DIR" || exit 1
+cd "$APP_DIR" || {
+    echo -e "${RED}Error: Could not navigate to $APP_DIR${NC}"
+    exit 1
+}
 
 # Development environment setup
 if [ "$ENVIRONMENT" = "development" ] && [ ! -d "venv" ]; then
     echo -e "${YELLOW}Setting up development environment...${NC}"
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install --upgrade pip
-    pip install -r requirements.txt
+    python3 -m venv venv || {
+        echo -e "${RED}Error: Failed to create virtual environment${NC}"
+        exit 1
+    }
+    source venv/bin/activate || {
+        echo -e "${RED}Error: Failed to activate virtual environment${NC}"
+        exit 1
+    }
+    python3 -m pip install --upgrade pip
+    python3 -m pip install -r requirements.txt || {
+        echo -e "${RED}Error: Failed to install requirements${NC}"
+        exit 1
+    }
+fi
+
+# Activate virtual environment if it exists
+if [ -d "venv" ]; then
+    source venv/bin/activate || {
+        echo -e "${RED}Error: Failed to activate virtual environment${NC}"
+        exit 1
+    }
 fi
 
 # Set reload flag for uvicorn
@@ -77,7 +118,7 @@ echo -e "  Python path: $PYTHONPATH"
 echo -e "  App directory: $APP_DIR"
 
 # Start the server
-exec python -m uvicorn main:app \
+exec python3 -m uvicorn main:app \
     --host 0.0.0.0 \
     --port "$PORT" \
     --workers "$WORKERS" \
