@@ -1,35 +1,30 @@
 # Use Python 3.11 slim image as base
 FROM python:3.11-slim
 
-# Set working directory
+# Set working directory and environment variables
 WORKDIR /app
-
-# Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=3030
+    PORT=3030 \
+    ENVIRONMENT=production \
+    PYTHONPATH=/app/src
 
-# Install system dependencies
+# Install only essential system dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends build-essential && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy the entire project
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy entrypoint script and make it executable
+COPY scripts/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Copy the rest of the application
 COPY . .
 
-# Make the script executable
-RUN chmod +x /app/templates/fastapi/run_server.sh
-
-# Create a wrapper script to handle environment and execution
-RUN echo '#!/bin/bash\n\
-export PYTHONPATH=/app/src:$PYTHONPATH\n\
-cd /app/templates/fastapi\n\
-exec ./run_server.sh --port 3030 --no-reload --workers 1\n\
-' > /app/docker-entrypoint.sh && \
-    chmod +x /app/docker-entrypoint.sh
-
-# Run the wrapper script
-CMD ["/app/docker-entrypoint.sh"]
-
-# docker compose down && docker compose up --build
+# Use the new entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["--workers", "1", "--no-reload"]
