@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from src.waitlist_service.notifications import notifier
+from waitlist_service.notifications import notifier
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
