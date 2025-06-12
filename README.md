@@ -3,6 +3,26 @@
 ## Overview
 This service manages the waitlist functionality, extracted as a standalone module. It handles user registration and waitlist status management.
 
+### Repository Structure
+
+This repository implements a FastAPI-based waitlist microservice. Key components include:
+
+- `src/waitlist_service/main.py` configures the FastAPI app, sets CORS, registers database events, and mounts the waitlist router.
+- `src/waitlist_service/router.py` exposes CRUD endpoints for waitlist entries and sends Telegram notifications when a user signs up.
+- `src/waitlist_service/db.py` handles asynchronous database setup and supports SQLite or PostgreSQL via the `DATABASE_URL` setting.
+- `src/waitlist_service/models.py` defines the `WaitlistEntry` ORM model with fields for name, email, comments, referral source, and timestamps.
+- `src/waitlist_service/notifications.py` provides a `TelegramNotifier` used to alert on new signups.
+- `src/waitlist_service/events.py` registers startup and shutdown handlers to manage the database connection and notifier lifecycle.
+- `src/waitlist_service/state.py` loads environment variables and exposes helper functions for interacting with the `databases.Database` instance.
+- Pydantic schemas for waitlist operations live in `src/waitlist_service/schemas`.
+- `src/verify_db.py` verifies SQLite and Supabase connections by creating test entries.
+- The `tests` directory contains unit tests for the ORM model, Supabase integration, and Telegram notification logic.
+- `docker-compose.yml` defines a PostgreSQL service and the waitlist app container; initialization SQL resides in `sql_queries/`.
+- `templates/fastapi/` includes example scripts and boilerplate for running a FastAPI project.
+- `requirements.txt` lists the service dependencies, while `setup.py` packages the project and defines test extras.
+
+Overall, the service provides a modular waitlist API capable of notifying via Telegram and running in Docker with either PostgreSQL or SQLite backends.
+
 ## Features
 - User registration for waitlist
 - Waitlist position tracking
