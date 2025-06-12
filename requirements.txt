@@ -9,3 +9,5 @@ uvicorn[standard]>=0.25.0
 aiogram>=3.0.0
 asyncpg>=0.29.0  # PostgreSQL async driver
 aiosqlite>=0.19.0  # SQLite async driver for development
+pytest-asyncio>=0.23
+databases>=0.8
