@@ -1,11 +1,13 @@
 import asyncio
 import logging
+import pytest
 from src.waitlist_service.notifications import notifier
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@pytest.mark.asyncio
 async def test_telegram():
     logger.info("Testing Telegram notifications")
     
